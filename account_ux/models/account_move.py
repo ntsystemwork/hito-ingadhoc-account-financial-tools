@@ -51,30 +51,23 @@ class AccountMove(models.Model):
     def action_send_invoice_mail(self):
         for rec in self.filtered(lambda x: x.is_invoice(include_receipts=True) and x.journal_id.mail_template_id):
             try:
-                rec.message_post_with_template(
-                    rec.journal_id.mail_template_id.id,
-                )
+                # Obtén la plantilla de correo
+                template = rec.journal_id.mail_template_id
+                
+                # Enviar el correo usando la plantilla
+                template.send_mail(rec.id, force_send=True)
+                
+                # Registrar un mensaje en el chatter
+                rec.message_post(body=_("The invoice was sent successfully via email."))
             except Exception as error:
-                title = _(
-                    "ERROR: Invoice was not sent via email"
-                )
-                # message = _(
-                #     "Invoice %s was correctly validate but was not send"
-                #     " via email. Please review invoice chatter for more"
-                #     " information" % rec.display_name
-                # )
-                # self.env.user.notify_warning(
-                #     title=title,
-                #     message=message,
-                #     sticky=True,
-                # )
+                # Manejar el error y registrar un mensaje en el chatter
+                title = _("ERROR: Invoice was not sent via email")
                 rec.message_post(body="<br/><br/>".join([
                     "<b>" + title + "</b>",
                     _("Please check the email template associated with"
-                      " the invoice journal."),
+                    " the invoice journal."),
                     "<code>" + str(error) + "</code>"
-                ]),
-                )
+                ]))
 
     @api.onchange('partner_id')
     def _onchange_partner_commercial(self):
